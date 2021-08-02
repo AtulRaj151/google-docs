@@ -9,17 +9,36 @@ import ModalFooter from '@material-tailwind/react/ModalFooter';
 import  {getSession, useSession} from 'next-auth/client'
 import Login from '../components/Login';
 import { useState } from 'react';
-import { size } from 'lodash';
-import { Input } from 'postcss';
+import {db} from '../firebase';
+import firebase from 'firebase';
+import { useCollectionOnce} from 'react-firebase-hooks/firestore'
+import DocumentRow from '../components/DocumentRow';
 
 
 export default function Home() {
   const [session] = useSession();
   const [ showModal ,setShowModal]  = useState(false);
   const [input, setInput] = useState('')
+  const [snapShots] = useCollectionOnce(db.collection('userDocs')
+  .doc(session?.user?.email)
+  .collection('docs')
+  .orderBy('timestamp','desc '))
 
   if(!session) return  <Login/>
-  const createDocument = ()=>{  }
+  const createDocument = ()=>{ 
+
+       if(!input) return;
+       db.collection('userDocs')
+       .doc(session?.user?.email)
+       .collection('docs')
+       .add({
+          fileName: input,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+       })
+
+       setInput('');
+       setShowModal(false);
+   }
   const modal = (
      <Modal
        size="sm"
@@ -91,7 +110,14 @@ export default function Home() {
               <p className="mr-12">Date Created</p>
               <Icon name="folder" size="3xl" color="gray"/>
            </div>
-
+          {snapShots?.docs.map((doc)=>(
+          
+          <DocumentRow
+              key={doc.id}
+              id={doc.id}
+              fileName={doc.data().fileName}
+              date={doc.data().timestamp }
+             />))}
          </div>
       </section>
 
